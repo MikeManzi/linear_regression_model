@@ -7,9 +7,8 @@ from flask_cors import CORS
 
 
 flask_application = Flask(__name__)
-CORS(flask_application, origins=["*"])  # Enable cross-origin requests from any domain
+CORS(flask_application, origins=["*"])  
 
-# Configure Flask-RESTX API with comprehensive documentation
 crop_yield_api = Api(
     flask_application,
     title='Crop Yield Prediction API',
@@ -36,35 +35,18 @@ crop_yield_api = Api(
     - Agricultural practices (fertilization, irrigation)
     - Growing periods and harvest timing
     ''',
-    doc='/documentation/',  # Custom documentation endpoint
+    doc='/documentation/',
     contact='Agricultural Technology Team',
     license='MIT License'
 )
 
-# Create namespace for prediction operations
 prediction_namespace = crop_yield_api.namespace(
     'yield-prediction', 
     description='🎯 Crop Yield Prediction Operations',
-    path='/api/v2'
+    path='/api/v1'
 )
 
-# ============================
-# MODEL LOADING AND SETUP
-# ============================
-
 def initialize_prediction_model():
-    """
-    Load the trained machine learning model and associated encoders from compressed file.
-    
-    Returns:
-    --------
-    dict: Complete model package including trained model and categorical encoders
-    
-    Raises:
-    -------
-    FileNotFoundError: If model file is not found
-    pickle.UnpicklingError: If model file is corrupted
-    """
     try:
         with gzip.open('optimal_crop_yield_model.pkl.gz', 'rb') as model_file:
             complete_model_package = pickle.load(model_file)
@@ -160,7 +142,7 @@ prediction_response_schema = crop_yield_api.model('CropYieldPredictionResponse',
     ),
     'model_version': fields.String(
         description='🔧 Version of the prediction model used',
-        example='2.0.1'
+        example='1.0.1'
     ),
     'processing_time_ms': fields.Float(
         description='⚡ Time taken to process the prediction (milliseconds)',
@@ -185,30 +167,6 @@ error_response_schema = crop_yield_api.model('ErrorResponse', {
 })
 
 def transform_agricultural_input(raw_input_data):
-    """
-    Comprehensive preprocessing pipeline for agricultural input data.
-    
-    This function handles:
-    - Data format standardization
-    - Categorical variable encoding
-    - Boolean feature conversion
-    - Input validation and cleaning
-    
-    Parameters:
-    -----------
-    raw_input_data : dict or pandas.DataFrame
-        Raw input data containing agricultural parameters
-        
-    Returns:
-    --------
-    pandas.DataFrame: Processed feature matrix ready for model prediction
-    
-    Raises:
-    -------
-    ValueError: If categorical values are not recognized by encoders
-    KeyError: If required features are missing
-    """
-    
     if isinstance(raw_input_data, dict):
         processed_dataframe = pd.DataFrame([raw_input_data])
     else:
@@ -260,18 +218,6 @@ def transform_agricultural_input(raw_input_data):
     return feature_matrix
 
 def calculate_prediction_confidence(prediction_value):
-    """
-    Assess confidence level of the prediction based on value ranges.
-    
-    Parameters:
-    -----------
-    prediction_value : float
-        The predicted yield value
-        
-    Returns:
-    --------
-    str: Confidence level assessment
-    """
     if 0 <= prediction_value <= 10:
         return "High"
     elif 10 < prediction_value <= 20:
@@ -281,13 +227,6 @@ def calculate_prediction_confidence(prediction_value):
 
 @prediction_namespace.route('/predict-yield')
 class CropYieldPredictor(Resource):
-    """
-    🎯 Advanced Crop Yield Prediction Endpoint
-    
-    This endpoint provides comprehensive crop yield predictions using a trained
-    machine learning model that considers multiple agricultural and environmental factors.
-    """
-    
     @prediction_namespace.doc('generate_crop_yield_prediction')
     @prediction_namespace.expect(agricultural_input_schema, validate=True)
     def post(self):
@@ -362,10 +301,10 @@ class CropYieldPredictor(Resource):
             result = {
                 'predicted_yield_tons_per_hectare': round(final_prediction, 3),
                 'confidence_level': confidence_assessment,
-                'model_version': complete_model_data.get('model_name', 'AgriTech ML Model v2.0'),
+                'model_version': complete_model_data.get('model_name', 'SmartHinga ML Model v1.0'),
                 'processing_time_ms': round(processing_duration, 2)
             }
-            print(f"DEBUG: Prediction result: {result}")  # Debug line
+            print(f"DEBUG: Prediction result: {result}")
             return result, 200
             
         except ValueError as validation_error:
@@ -392,7 +331,6 @@ class CropYieldPredictor(Resource):
 
 @prediction_namespace.route('/model-info')
 class ModelInformation(Resource):
-    """📊 Model Information and Health Check Endpoint"""
     
     @prediction_namespace.doc('get_model_information')
     def get(self):
@@ -403,7 +341,6 @@ class ModelInformation(Resource):
         including version details, supported features, and system health status.
         """
         try:
-            # Get supported categorical values from encoders
             supported_regions = geographic_region_encoder.classes_.tolist()
             supported_soil_types = soil_type_encoder.classes_.tolist()
             supported_crops = crop_variety_encoder.classes_.tolist()
@@ -411,8 +348,8 @@ class ModelInformation(Resource):
             
             return {
                 'model_status': 'Active and Ready',
-                'model_name': complete_model_data.get('model_name', 'AgriTech ML Model'),
-                'model_version': '2.0.1',
+                'model_name': complete_model_data.get('model_name', 'SmartHinga ML Model'),
+                'model_version': '1.0.1',
                 'training_date': complete_model_data.get('training_date', 'Unknown'),
                 'supported_features': {
                     'regions': supported_regions,
@@ -420,7 +357,7 @@ class ModelInformation(Resource):
                     'crops': supported_crops,
                     'weather_conditions': supported_weather_conditions
                 },
-                'api_version': '2.0.1',
+                'api_version': '1.0.1',
                 'health_status': '✅ Operational'
             }, 200
             
@@ -434,15 +371,15 @@ class ModelInformation(Resource):
 def api_root_endpoint():
     """🏠 API Root Endpoint - Health Check and Basic Information"""
     return {
-        'service_name': 'AgriTech Crop Yield Prediction API',
-        'version': '2.0.1',
+        'service_name': 'SmartHinga Crop Yield Prediction API',
+        'version': '1.0.1',
         'status': '🟢 Operational',
         'description': 'Advanced machine learning API for agricultural yield prediction',
         'documentation_url': '/documentation/',
         'health_check': '✅ All systems operational',
         'supported_operations': [
-            'POST /api/v2/predict-yield - Generate crop yield predictions',
-            'GET /api/v2/model-info - Retrieve model information',
+            'POST /api/v1/predict-yield - Generate crop yield predictions',
+            'GET /api/v1/model-info - Retrieve model information',
             'GET /documentation/ - Access API documentation'
         ]
     }, 200
@@ -453,11 +390,7 @@ if __name__ == '__main__':
     server_port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     
-    print("🚀 Starting AgriTech Crop Yield Prediction API...")
-    print(f"📡 Server will run on port: {server_port}")
-    print(f"🔧 Debug mode: {'Enabled' if debug_mode else 'Disabled'}")
-    print(f"📚 API Documentation: http://localhost:{server_port}/documentation/")
-    
+    print("🚀 Starting SmartHinga Crop Yield Prediction API...")
     flask_application.run(
         host='0.0.0.0',
         port=server_port,
